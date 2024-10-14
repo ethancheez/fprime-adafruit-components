@@ -1,4 +1,4 @@
-module Sensors {
+module Adafruit {
 
     struct MPL3115A2_DataUnit_F64 {
         value: F64,
@@ -32,13 +32,13 @@ module Sensors {
         # ----------------------------------------------------------------------
 
         @ Telemetry for the current altitude in meters
-        telemetry Altitude: Sensors.MPL3115A2_DataUnit_F64
+        telemetry Altitude: Adafruit.MPL3115A2_DataUnit_F64
 
         @ Telemetry for the current temperature in C
-        telemetry TemperatureC: Sensors.MPL3115A2_DataUnit_F64
+        telemetry TemperatureC: Adafruit.MPL3115A2_DataUnit_F64
 
         @ Telemetry for the current air pressure in kPa
-        telemetry Pressure: Sensors.MPL3115A2_DataUnit_F64
+        telemetry Pressure: Adafruit.MPL3115A2_DataUnit_F64
 
         # ----------------------------------------------------------------------
         # Commands

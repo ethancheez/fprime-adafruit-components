@@ -1,4 +1,4 @@
-module Components {
+module Adafruit {
 
     array PCA9685_ANGLES = [16] U8
 
@@ -27,14 +27,14 @@ module Components {
         output port setPolyDb: Svc.Poly
 
         @ Port to set a channel angle called by other components
-        sync input port setAngle: Components.PcaAngle
+        sync input port setAngle: Adafruit.PcaAngle
 
         # ----------------------------------------------------------------------
         # Telemetry
         # ----------------------------------------------------------------------
 
         @ Telemetry for the servo angles in degrees for all 16 channels
-        telemetry Servo_Angles: Components.PCA9685_ANGLES
+        telemetry Servo_Angles: Adafruit.PCA9685_ANGLES
 
         # ----------------------------------------------------------------------
         # Commands

@@ -1,4 +1,4 @@
-# Sensors::PA1010D
+# Adafruit::PA1010D
 
 Component for PA1010D GPS Module
 

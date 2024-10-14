@@ -4,14 +4,14 @@
 // \brief  hpp file for PA1010D component implementation class
 // ======================================================================
 
-#ifndef Sensors_PA1010D_HPP
-#define Sensors_PA1010D_HPP
+#ifndef Adafruit_PA1010D_HPP
+#define Adafruit_PA1010D_HPP
 
 #include "Components/PA1010D/PA1010DComponentAc.hpp"
 
 #include <vector>
 
-namespace Sensors {
+namespace Adafruit {
 
 class PA1010D : public PA1010DComponentBase {
   public:
@@ -57,7 +57,7 @@ class PA1010D : public PA1010DComponentBase {
     //! Handler implementation for command SET_NMEA_OUTPUT
     void SET_NMEA_OUTPUT_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                     U32 cmdSeq,           //!< The command sequence number
-                                    Sensors::GPS_NMEA_OUTPUTS nmea,
+                                    Adafruit::GPS_NMEA_OUTPUTS nmea,
                                     Fw::On state);
 
     //! Handler implementation for command SET_UPDATE_RATE_MS
@@ -126,6 +126,6 @@ class PA1010D : public PA1010DComponentBase {
     GPS_DataUnit_F64 gps_altitude;
 };
 
-}  // namespace Sensors
+}  // namespace Adafruit
 
 #endif

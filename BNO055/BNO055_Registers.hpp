@@ -1,5 +1,5 @@
-#ifndef Sensors_BNO055_REGISTERS_HPP
-#define Sensors_BNO055_REGISTERS_HPP
+#ifndef Adafruit_BNO055_REGISTERS_HPP
+#define Adafruit_BNO055_REGISTERS_HPP
 
 #include "Fw/Types/BasicTypes.hpp"
 
@@ -1863,4 +1863,4 @@ struct bno055_mag_offset_t
     I16 r; /**< Mag radius x data */
 };
 
-#endif // Sensors_BNO055_REGISTERS_HPP
+#endif // Adafruit_BNO055_REGISTERS_HPP

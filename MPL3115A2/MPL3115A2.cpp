@@ -10,7 +10,7 @@
 
 #include "MPL3115A2_Registers.hpp"
 
-namespace Sensors {
+namespace Adafruit {
 
 // ----------------------------------------------------------------------
 // Component construction and destruction
@@ -385,4 +385,4 @@ Drv::I2cStatus MPL3115A2::getTemperature(F64* temperature) {
     return stat;
 }
 
-}  // namespace Sensors
+}  // namespace Adafruit

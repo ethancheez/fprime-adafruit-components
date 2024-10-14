@@ -4,12 +4,12 @@
 // \brief  hpp file for MPL3115A2 component implementation class
 // ======================================================================
 
-#ifndef Sensors_MPL3115A2_HPP
-#define Sensors_MPL3115A2_HPP
+#ifndef Adafruit_MPL3115A2_HPP
+#define Adafruit_MPL3115A2_HPP
 
 #include "Components/MPL3115A2/MPL3115A2ComponentAc.hpp"
 
-namespace Sensors {
+namespace Adafruit {
 
 class MPL3115A2 : public MPL3115A2ComponentBase {
   public:
@@ -114,11 +114,11 @@ class MPL3115A2 : public MPL3115A2ComponentBase {
 
     U32 m_polyDb_offset;
 
-    Sensors::MPL3115A2_DataUnit_F64 m_pressure;
-    Sensors::MPL3115A2_DataUnit_F64 m_altitude;
-    Sensors::MPL3115A2_DataUnit_F64 m_temperature;
+    Adafruit::MPL3115A2_DataUnit_F64 m_pressure;
+    Adafruit::MPL3115A2_DataUnit_F64 m_altitude;
+    Adafruit::MPL3115A2_DataUnit_F64 m_temperature;
 };
 
-}  // namespace Sensors
+}  // namespace Adafruit
 
 #endif

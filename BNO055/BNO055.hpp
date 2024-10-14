@@ -4,13 +4,13 @@
 // \brief  hpp file for BNO055 component implementation class
 // ======================================================================
 
-#ifndef Sensors_BNO055_HPP
-#define Sensors_BNO055_HPP
+#ifndef Adafruit_BNO055_HPP
+#define Adafruit_BNO055_HPP
 
 #include "BNO055_Registers.hpp"
 #include "Components/BNO055/BNO055ComponentAc.hpp"
 
-namespace Sensors {
+namespace Adafruit {
 
 class BNO055 : public BNO055ComponentBase {
   public:
@@ -310,15 +310,15 @@ class BNO055 : public BNO055ComponentBase {
 
     U32 m_polyDb_offset;
 
-    Sensors::IMU_XYZ_F64 m_accel;
-    Sensors::IMU_XYZ_F64 m_gyro;
-    Sensors::IMU_XYZ_F64 m_mag;
-    Sensors::IMU_XYZ_F64 m_euler;
-    Sensors::IMU_WXYZ_F64 m_quaternion;
-    Sensors::IMU_XYZ_F64 m_linear_accel;
-    Sensors::IMU_XYZ_F64 m_gravity;
+    Adafruit::IMU_XYZ_F64 m_accel;
+    Adafruit::IMU_XYZ_F64 m_gyro;
+    Adafruit::IMU_XYZ_F64 m_mag;
+    Adafruit::IMU_XYZ_F64 m_euler;
+    Adafruit::IMU_WXYZ_F64 m_quaternion;
+    Adafruit::IMU_XYZ_F64 m_linear_accel;
+    Adafruit::IMU_XYZ_F64 m_gravity;
 };
 
-}  // namespace Sensors
+}  // namespace Adafruit
 
 #endif

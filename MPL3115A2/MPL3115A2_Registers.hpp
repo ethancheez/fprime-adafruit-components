@@ -1,5 +1,5 @@
-#ifndef Sensors_MPL3115A2_REGISTERS_HPP
-#define Sensors_MPL3115A2_REGISTERS_HPP
+#ifndef Adafruit_MPL3115A2_REGISTERS_HPP
+#define Adafruit_MPL3115A2_REGISTERS_HPP
 
 #define MPL3115A2_STATUS            0x00
 #define MPL3115A2_OUT_P_MSB         0x01
@@ -69,4 +69,4 @@
 #define MPL3115A2_RAW_F             0x40    // sample in raw mode
 #define MPL3115A2_ALT_F             0x80    // 1==>altimeter mode; 0==>barometer mode
 
-#endif  // Sensors_MPL3115A2_REGISTERS_HPP
+#endif  // Adafruit_MPL3115A2_REGISTERS_HPP

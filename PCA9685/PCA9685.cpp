@@ -8,7 +8,7 @@
 #include "FpConfig.hpp"
 #include "Fw/Logger/Logger.hpp"
 
-namespace Components {
+namespace Adafruit {
 
 /**
  * \brief Construct PCA9685 object
@@ -453,4 +453,4 @@ Drv::I2cStatus PCA9685::readRegisterByte(U8 startRegister, U8* byte) {
     return status;
 }
 
-}  // namespace Components
+}  // namespace Adafruit

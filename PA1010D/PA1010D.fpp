@@ -1,4 +1,4 @@
-module Sensors {
+module Adafruit {
 
     struct GPS_DataUnit {
         value: string,
@@ -62,26 +62,26 @@ module Sensors {
         # ----------------------------------------------------------------------
 
         @ Telemetry for latitude and longitude
-        telemetry GPS_Location: Sensors.GPS_Location
+        telemetry GPS_Location: Adafruit.GPS_Location
 
         @ Telemetry for date and time in UTC
-        telemetry GPS_Time: Sensors.GPS_Time
+        telemetry GPS_Time: Adafruit.GPS_Time
 
         @ Telemetry for ground speed
-        telemetry GPS_Speed: Sensors.GPS_DataUnit_F64
+        telemetry GPS_Speed: Adafruit.GPS_DataUnit_F64
 
         @ Telemetry for altitude
-        telemetry GPS_Altitude: Sensors.GPS_DataUnit_F64
+        telemetry GPS_Altitude: Adafruit.GPS_DataUnit_F64
 
         @ Telemetry for the enabled/disabled NMEA states
-        telemetry NMEA_States: Sensors.GPS_NMEA_States
+        telemetry NMEA_States: Adafruit.GPS_NMEA_States
 
         # ----------------------------------------------------------------------
         # Commands
         # ----------------------------------------------------------------------
 
         @ Command to enable/disable NMEA outputs
-        sync command SET_NMEA_OUTPUT(nmea: Sensors.GPS_NMEA_OUTPUTS, state: Fw.On)
+        sync command SET_NMEA_OUTPUT(nmea: Adafruit.GPS_NMEA_OUTPUTS, state: Fw.On)
 
         @ Command to change the update rate of the GPS
         sync command SET_UPDATE_RATE_MS(ms: U16)

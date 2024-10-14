@@ -1,4 +1,4 @@
-# Sensors::MPL3115A2
+# Adafruit::MPL3115A2
 
 Component for the MPL3115A2 Altimeter
 

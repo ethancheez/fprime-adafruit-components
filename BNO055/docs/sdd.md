@@ -1,4 +1,4 @@
-# Sensors::BNO055
+# Adafruit::BNO055
 
 Component for the BNO055 IMU Module
 
