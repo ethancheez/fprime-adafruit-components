@@ -5,6 +5,11 @@ module Adafruit {
         unit: string,
     }
 
+    struct BNO055_Label_U8 {
+        label: string,
+        value: U8,
+    }
+
     struct IMU_XYZ_F64 {
         x: BNO055_DataUnit_F64,
         y: BNO055_DataUnit_F64,
@@ -17,6 +22,8 @@ module Adafruit {
         y: BNO055_DataUnit_F64,
         z: BNO055_DataUnit_F64,
     }
+
+    array BNO055_Calibrations = [4] BNO055_Label_U8
 
     @ Component for the BNO055 IMU Module
     passive component BNO055 {
@@ -40,6 +47,9 @@ module Adafruit {
         # ----------------------------------------------------------------------
         # Telemetry
         # ----------------------------------------------------------------------
+
+        @ Calibration Status Telemetry
+        telemetry CalibrationStatus: Adafruit.BNO055_Calibrations
 
         @ Accelerometer XYZ Telemetry
         telemetry Accel: Adafruit.IMU_XYZ_F64

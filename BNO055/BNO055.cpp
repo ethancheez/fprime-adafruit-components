@@ -78,6 +78,7 @@ void BNO055::setPolyDbOffset(U32 offset) {
 // ----------------------------------------------------------------------
 
 void BNO055::run_handler(NATIVE_INT_TYPE portNum, NATIVE_UINT_TYPE context) {
+    this->getCalibrations();
     this->updateAccel();
     this->updateGyro();
     this->updateMag();
@@ -113,6 +114,7 @@ void BNO055::run_handler(NATIVE_INT_TYPE portNum, NATIVE_UINT_TYPE context) {
     }
 
     if (this->isConnected_tlmOut_OutputPort(0)) {
+        this->tlmWrite_CalibrationStatus(this->m_calibrations);
         this->tlmWrite_Accel(this->m_accel);
         this->tlmWrite_Gyro(this->m_gyro);
         this->tlmWrite_Mag(this->m_mag);
@@ -651,6 +653,146 @@ Drv::I2cStatus BNO055::setEulerUnit(U8 euler_unit) {
     }
 
     return Drv::I2cStatus::I2C_OK;
+}
+
+/*!
+ *  \brief This API used to read
+ *  mag calibration status from register from 0x35 bit 0 and 1
+ *
+ *  \param mag_calib_u8 : The value of mag calib status
+ *
+ *  \return: I2C status of transactions
+ */
+Drv::I2cStatus BNO055::getMagCalibration(U8* mag_calib_u8) {
+    Drv::I2cStatus stat;
+
+    U8 data_u8r = BNO055_INIT_VALUE;
+    Fw::Buffer reg_data;
+
+    reg_data.set(&data_u8r, sizeof data_u8r);
+    stat = this->readRegisterBlock(BNO055_MAG_CALIB_STAT_REG, reg_data);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        return stat;
+    }
+    *mag_calib_u8 = BNO055_GET_BITSLICE(reg_data.getData()[0], BNO055_MAG_CALIB_STAT);
+
+    return Drv::I2cStatus::I2C_OK;
+}
+
+/*!
+ *  \brief This API used to read
+ *  accel calibration status from register from 0x35 bit 2 and 3
+ *
+ *  \param accel_calib_u8 : The value of accel calib status
+ *
+ *  \return: I2C status of transactions
+ */
+Drv::I2cStatus BNO055::getAccelCalibration(U8* accel_calib_u8) {
+    Drv::I2cStatus stat;
+
+    U8 data_u8r = BNO055_INIT_VALUE;
+    Fw::Buffer reg_data;
+
+    reg_data.set(&data_u8r, sizeof data_u8r);
+    stat = this->readRegisterBlock(BNO055_ACCEL_CALIB_STAT_REG, reg_data);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        return stat;
+    }
+    *accel_calib_u8 = BNO055_GET_BITSLICE(reg_data.getData()[0], BNO055_ACCEL_CALIB_STAT);
+
+    return Drv::I2cStatus::I2C_OK;
+}
+
+/*!
+ *  \brief This API used to read
+ *  gyro calibration status from register from 0x35 bit 4 and 5
+ *
+ *  \param gyro_calib_u8 : The value of gyro calib status
+ *
+ *  \return: I2C status of transactions
+ */
+Drv::I2cStatus BNO055::getGyroCalibration(U8* gyro_calib_u8) {
+    Drv::I2cStatus stat;
+
+    U8 data_u8r = BNO055_INIT_VALUE;
+    Fw::Buffer reg_data;
+
+    reg_data.set(&data_u8r, sizeof data_u8r);
+    stat = this->readRegisterBlock(BNO055_GYRO_CALIB_STAT_REG, reg_data);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        return stat;
+    }
+    *gyro_calib_u8 = BNO055_GET_BITSLICE(reg_data.getData()[0], BNO055_GYRO_CALIB_STAT);
+
+    return Drv::I2cStatus::I2C_OK;
+}
+
+/*!
+ *  \brief This API used to read
+ *  system calibration status from register from 0x35 bit 6 and 7
+ *
+ *  \param sys_calib_u8 : The value of system calib status
+ *
+ *  \return: I2C status of transactions
+ */
+Drv::I2cStatus BNO055::getSysCalibration(U8* sys_calib_u8) {
+    Drv::I2cStatus stat;
+
+    U8 data_u8r = BNO055_INIT_VALUE;
+    Fw::Buffer reg_data;
+
+    reg_data.set(&data_u8r, sizeof data_u8r);
+    stat = this->readRegisterBlock(BNO055_SYS_CALIB_STAT_REG, reg_data);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        return stat;
+    }
+    *sys_calib_u8 = BNO055_GET_BITSLICE(reg_data.getData()[0], BNO055_SYS_CALIB_STAT);
+
+    return Drv::I2cStatus::I2C_OK;
+}
+
+/**
+ * \brief Get calibration statuses of IMU
+ */
+void BNO055::getCalibrations() {
+    Drv::I2cStatus stat;
+
+    U8 mag_calib = 0;
+    U8 accel_calib = 0;
+    U8 gyro_calib = 0;
+    U8 sys_calib = 0;
+
+    stat - this->getMagCalibration(&mag_calib);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        this->log_WARNING_HI_ImuUpdateError("MAG CALIBRATE", stat);
+    }
+
+    stat - this->getAccelCalibration(&accel_calib);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        this->log_WARNING_HI_ImuUpdateError("ACCEL CALIBRATE", stat);
+    }
+
+    stat - this->getGyroCalibration(&gyro_calib);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        this->log_WARNING_HI_ImuUpdateError("GYRO CALIBRATE", stat);
+    }
+
+    stat - this->getSysCalibration(&sys_calib);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        this->log_WARNING_HI_ImuUpdateError("SYS CALIBRATE", stat);
+    }
+
+    this->m_calibrations[0].setlabel("Magnetometer");
+    this->m_calibrations[0].setvalue(mag_calib);
+
+    this->m_calibrations[1].setlabel("Accelerometer");
+    this->m_calibrations[1].setvalue(accel_calib);
+
+    this->m_calibrations[2].setlabel("Gyroscope");
+    this->m_calibrations[2].setvalue(gyro_calib);
+
+    this->m_calibrations[3].setlabel("System");
+    this->m_calibrations[3].setvalue(sys_calib);
 }
 
 /**

@@ -266,6 +266,51 @@ class BNO055 : public BNO055ComponentBase {
      */
     Drv::I2cStatus setEulerUnit(U8 euler_unit);
 
+    /*!
+     *  \brief This API used to read
+     *  mag calibration status from register from 0x35 bit 0 and 1
+     *
+     *  \param mag_calib_u8 : The value of mag calib status
+     *
+     *  \return: I2C status of transactions
+     */
+    Drv::I2cStatus getMagCalibration(U8* mag_calib_u8);
+
+    /*!
+     *  \brief This API used to read
+     *  accel calibration status from register from 0x35 bit 2 and 3
+     *
+     *  \param accel_calib_u8 : The value of accel calib status
+     *
+     *  \return: I2C status of transactions
+     */
+    Drv::I2cStatus getAccelCalibration(U8* accel_calib_u8);
+
+    /*!
+     *  \brief This API used to read
+     *  gyro calibration status from register from 0x35 bit 4 and 5
+     *
+     *  \param gyro_calib_u8 : The value of gyro calib status
+     *
+     *  \return: I2C status of transactions
+     */
+    Drv::I2cStatus getGyroCalibration(U8* gyro_calib_u8);
+
+    /*!
+     *  \brief This API used to read
+     *  system calibration status from register from 0x35 bit 6 and 7
+     *
+     *  \param sys_calib_u8 : The value of system calib status
+     *
+     *  \return: I2C status of transactions
+     */
+    Drv::I2cStatus getSysCalibration(U8* sys_calib_u8);
+
+    /**
+     * \brief Get calibration statuses of IMU
+     */
+    void getCalibrations();
+
     /**
      * \brief Read accelerometer data from IMU
      */
@@ -310,6 +355,7 @@ class BNO055 : public BNO055ComponentBase {
 
     U32 m_polyDb_offset;
 
+    Adafruit::BNO055_Calibrations m_calibrations;
     Adafruit::IMU_XYZ_F64 m_accel;
     Adafruit::IMU_XYZ_F64 m_gyro;
     Adafruit::IMU_XYZ_F64 m_mag;
