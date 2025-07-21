@@ -4,13 +4,13 @@
 // \brief  hpp file for BMP390 component implementation class
 // ======================================================================
 
-#ifndef Adafruit_BMP390_HPP
-#define Adafruit_BMP390_HPP
+#ifndef Sensors_BMP390_HPP
+#define Sensors_BMP390_HPP
 
 #include "BMP390_Registers.hpp"
 #include "Components/BMP390/BMP390ComponentAc.hpp"
 
-namespace Adafruit {
+namespace Sensors {
 
 class BMP390 final : public BMP390ComponentBase {
   public:
@@ -132,6 +132,6 @@ class BMP390 final : public BMP390ComponentBase {
     F64 m_temperature = 0.0;
 };
 
-}  // namespace Adafruit
+}  // namespace Sensors
 
 #endif

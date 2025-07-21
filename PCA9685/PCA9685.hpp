@@ -4,12 +4,12 @@
 // \brief  hpp file for PCA9685 component implementation class
 // ======================================================================
 
-#ifndef Adafruit_PCA9685_HPP
-#define Adafruit_PCA9685_HPP
+#ifndef Sensors_PCA9685_HPP
+#define Sensors_PCA9685_HPP
 
 #include "Components/PCA9685/PCA9685ComponentAc.hpp"
 
-namespace Adafruit {
+namespace Sensors {
 
 class PCA9685 : public PCA9685ComponentBase {
   public:
@@ -217,9 +217,9 @@ class PCA9685 : public PCA9685ComponentBase {
     U64 m_maxPWM;
 
     I8 m_offsets[16] = {0};
-    Adafruit::PCA9685_ANGLES m_angles = {0};
+    Sensors::PCA9685_ANGLES m_angles = {0};
 };
 
-}  // namespace Adafruit
+}  // namespace Sensors
 
 #endif

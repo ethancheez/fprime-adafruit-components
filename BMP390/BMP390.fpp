@@ -1,4 +1,4 @@
-module Adafruit {
+module Sensors {
 
     struct BMP390_DataUnit_F64 {
         value: F64,
@@ -28,11 +28,11 @@ module Adafruit {
         # Telemetry
         # ----------------------------------------------------------------------
 
-        telemetry Altitude: Adafruit.BMP390_DataUnit_F64
+        telemetry Altitude: Sensors.BMP390_DataUnit_F64
 
-        telemetry TemperatureC: Adafruit.BMP390_DataUnit_F64
+        telemetry TemperatureC: Sensors.BMP390_DataUnit_F64
         
-        telemetry Pressure: Adafruit.BMP390_DataUnit_F64
+        telemetry Pressure: Sensors.BMP390_DataUnit_F64
 
         # ----------------------------------------------------------------------
         # Commands

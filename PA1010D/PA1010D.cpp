@@ -10,7 +10,7 @@
 
 #include <string>
 
-namespace Adafruit {
+namespace Sensors {
 
 /**
  * \brief Construct PA1010D object
@@ -68,13 +68,13 @@ void PA1010D::setPolyDbOffset(U32 offset) {
 //! Handler implementation for run
 void PA1010D ::run_handler(NATIVE_INT_TYPE portNum, NATIVE_UINT_TYPE context) {
     // NMEA State Telemetry
-    Adafruit::GPS_NMEA_States states;
-    states[0] = {Adafruit::GPS_NMEA_OUTPUTS::GLL, (this->nmea_states[0] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[1] = {Adafruit::GPS_NMEA_OUTPUTS::RMC, (this->nmea_states[1] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[2] = {Adafruit::GPS_NMEA_OUTPUTS::VTG, (this->nmea_states[2] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[3] = {Adafruit::GPS_NMEA_OUTPUTS::GGA, (this->nmea_states[3] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[4] = {Adafruit::GPS_NMEA_OUTPUTS::GSA, (this->nmea_states[4] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[5] = {Adafruit::GPS_NMEA_OUTPUTS::GSV, (this->nmea_states[5] == '1') ? Fw::On::ON : Fw::On::OFF};
+    Sensors::GPS_NMEA_States states;
+    states[0] = {Sensors::GPS_NMEA_OUTPUTS::GLL, (this->nmea_states[0] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[1] = {Sensors::GPS_NMEA_OUTPUTS::RMC, (this->nmea_states[1] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[2] = {Sensors::GPS_NMEA_OUTPUTS::VTG, (this->nmea_states[2] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[3] = {Sensors::GPS_NMEA_OUTPUTS::GGA, (this->nmea_states[3] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[4] = {Sensors::GPS_NMEA_OUTPUTS::GSA, (this->nmea_states[4] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[5] = {Sensors::GPS_NMEA_OUTPUTS::GSV, (this->nmea_states[5] == '1') ? Fw::On::ON : Fw::On::OFF};
 
     if (this->isConnected_tlmOut_OutputPort(0)) {
         this->tlmWrite_NMEA_States(states);
@@ -146,26 +146,26 @@ void PA1010D ::run_handler(NATIVE_INT_TYPE portNum, NATIVE_UINT_TYPE context) {
 //! Handler implementation for command SET_NMEA_OUTPUT
 void PA1010D ::SET_NMEA_OUTPUT_cmdHandler(FwOpcodeType opCode,
                                           U32 cmdSeq,
-                                          Adafruit::GPS_NMEA_OUTPUTS nmea,
+                                          Sensors::GPS_NMEA_OUTPUTS nmea,
                                           Fw::On state) {
     U8 index = 0;
     switch (nmea) {
-        case Adafruit::GPS_NMEA_OUTPUTS::GLL:
+        case Sensors::GPS_NMEA_OUTPUTS::GLL:
             index = 0;
             break;
-        case Adafruit::GPS_NMEA_OUTPUTS::RMC:
+        case Sensors::GPS_NMEA_OUTPUTS::RMC:
             index = 1;
             break;
-        case Adafruit::GPS_NMEA_OUTPUTS::VTG:
+        case Sensors::GPS_NMEA_OUTPUTS::VTG:
             index = 2;
             break;
-        case Adafruit::GPS_NMEA_OUTPUTS::GGA:
+        case Sensors::GPS_NMEA_OUTPUTS::GGA:
             index = 3;
             break;
-        case Adafruit::GPS_NMEA_OUTPUTS::GSA:
+        case Sensors::GPS_NMEA_OUTPUTS::GSA:
             index = 4;
             break;
-        case Adafruit::GPS_NMEA_OUTPUTS::GSV:
+        case Sensors::GPS_NMEA_OUTPUTS::GSV:
             index = 5;
     }
 
@@ -370,4 +370,4 @@ Drv::I2cStatus PA1010D::sendCommand(Fw::Buffer buf) {
     return this->i2cWrite_out(0, this->m_i2cDevAddress, cmd_buf);
 }
 
-}  // namespace Adafruit
+}  // namespace Sensors

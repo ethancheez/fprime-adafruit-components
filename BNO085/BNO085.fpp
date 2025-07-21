@@ -1,4 +1,4 @@
-module Adafruit {
+module Sensors {
 
     struct BNO085_DataUnit_F64 {
         value: F64,
@@ -39,25 +39,25 @@ module Adafruit {
         # ----------------------------------------------------------------------
 
         @ Accelerometer XYZ Telemetry
-        telemetry Accel: Adafruit.BNO085_IMU_XYZ_F64
+        telemetry Accel: Sensors.BNO085_IMU_XYZ_F64
 
         @ Gyroscope XYZ Telemetry
-        telemetry Gyro: Adafruit.BNO085_IMU_XYZ_F64
+        telemetry Gyro: Sensors.BNO085_IMU_XYZ_F64
         
         @ Magnetometer XYZ Telemetry
-        telemetry Mag: Adafruit.BNO085_IMU_XYZ_F64
+        telemetry Mag: Sensors.BNO085_IMU_XYZ_F64
 
         @ Euler Angles XYZ Telemetry
-        telemetry Euler: Adafruit.BNO085_IMU_XYZ_F64
+        telemetry Euler: Sensors.BNO085_IMU_XYZ_F64
 
         @ Quaternion WXYZ Constants Telemetry
-        telemetry Quat: Adafruit.BNO085_IMU_WXYZ_F64
+        telemetry Quat: Sensors.BNO085_IMU_WXYZ_F64
 
         @ Linear Acceleration XYZ Telemetry
-        telemetry LinearAccel: Adafruit.BNO085_IMU_XYZ_F64
+        telemetry LinearAccel: Sensors.BNO085_IMU_XYZ_F64
 
         @ Gravitational Acceleration XYZ Telemetry
-        telemetry Gravity: Adafruit.BNO085_IMU_XYZ_F64
+        telemetry Gravity: Sensors.BNO085_IMU_XYZ_F64
 
         ###############################################################################
         # Standard AC Ports: Required for Channels, Events, Commands, and Parameters  #

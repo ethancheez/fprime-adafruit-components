@@ -8,7 +8,7 @@
 #include "FpConfig.hpp"
 #include "Fw/Logger/Logger.hpp"
 
-namespace Adafruit {
+namespace Sensors {
 
 /**
  * \brief Construct BNO055 object
@@ -1166,4 +1166,4 @@ void BNO055::updateGravity() {
                         {(F64)(gravity.z / BNO055_GRAVITY_DIV_MSQ), "m/s^2"});
 }
 
-}  // namespace Adafruit
+}  // namespace Sensors

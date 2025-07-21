@@ -8,7 +8,7 @@
 #include <Fw/Logger/Logger.hpp>
 #include <cmath>
 
-namespace Adafruit {
+namespace Sensors {
 
 // ----------------------------------------------------------------------
 // Component construction and destruction
@@ -823,4 +823,4 @@ I8 BMP390::cal_crc(U8 seed, U8 data) {
     return static_cast<I8>(seed);
 }
 
-}  // namespace Adafruit
+}  // namespace Sensors

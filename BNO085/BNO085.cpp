@@ -8,7 +8,7 @@
 #include <cmath>
 #include "Fw/Logger/Logger.hpp"
 
-namespace Adafruit {
+namespace Sensors {
 
 // ----------------------------------------------------------------------
 // Component construction and destruction
@@ -522,4 +522,4 @@ void BNO085::quatToEuler(BNO085_IMU_WXYZ_F64 quat) {
     this->m_euler.set({yaw, Fw::String("deg")}, {pitch, Fw::String("deg")}, {roll, Fw::String("deg")});
 }
 
-}  // namespace Adafruit
+}  // namespace Sensors

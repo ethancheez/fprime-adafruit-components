@@ -4,12 +4,12 @@
 // \brief  hpp file for BNO085 component implementation class
 // ======================================================================
 
-#ifndef Components_BNO085_HPP
-#define Components_BNO085_HPP
+#ifndef Sensors_BNO085_HPP
+#define Sensors_BNO085_HPP
 
 #include "Components/BNO085/BNO085ComponentAc.hpp"
 
-namespace Adafruit {
+namespace Sensors {
 
 class BNO085 final : public BNO085ComponentBase {
     static const U8 HEADER_SIZE = 4;                                    //!< Size of the header in bytes
@@ -131,6 +131,6 @@ class BNO085 final : public BNO085ComponentBase {
     BNO085_IMU_XYZ_F64 m_gravity;
 };
 
-}  // namespace Adafruit
+}  // namespace Sensors
 
 #endif

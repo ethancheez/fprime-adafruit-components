@@ -1,4 +1,4 @@
-module Adafruit {
+module Sensors {
 
     struct BNO055_DataUnit_F64 {
         value: F64,
@@ -49,28 +49,28 @@ module Adafruit {
         # ----------------------------------------------------------------------
 
         @ Calibration Status Telemetry
-        telemetry CalibrationStatus: Adafruit.BNO055_Calibrations
+        telemetry CalibrationStatus: Sensors.BNO055_Calibrations
 
         @ Accelerometer XYZ Telemetry
-        telemetry Accel: Adafruit.IMU_XYZ_F64
+        telemetry Accel: Sensors.IMU_XYZ_F64
 
         @ Gyroscope XYZ Telemetry
-        telemetry Gyro: Adafruit.IMU_XYZ_F64
+        telemetry Gyro: Sensors.IMU_XYZ_F64
         
         @ Magnetometer XYZ Telemetry
-        telemetry Mag: Adafruit.IMU_XYZ_F64
+        telemetry Mag: Sensors.IMU_XYZ_F64
 
         @ Euler XYZ Angles Telemetry
-        telemetry Euler: Adafruit.IMU_XYZ_F64
+        telemetry Euler: Sensors.IMU_XYZ_F64
 
         @ Quaternion WXYZ Constants Telemetry
-        telemetry Quat: Adafruit.IMU_WXYZ_F64
+        telemetry Quat: Sensors.IMU_WXYZ_F64
 
         @ Linear Acceleration XYZ Telemetry
-        telemetry LinearAccel: Adafruit.IMU_XYZ_F64
+        telemetry LinearAccel: Sensors.IMU_XYZ_F64
 
         @ Gravitational Acceleration XYZ Telemetry
-        telemetry Gravity: Adafruit.IMU_XYZ_F64
+        telemetry Gravity: Sensors.IMU_XYZ_F64
 
         # ----------------------------------------------------------------------
         # Events
