@@ -2,18 +2,7 @@ module Radios {
     @ Component for RFM95 Radio Module
     active component RFM95 {
 
-        # ----------------------------------------------------------------------
-        # Framer, deframer, and queue ports
-        # ----------------------------------------------------------------------
-
-        @ Data coming in from the framing component
-        sync input port comDataIn: Drv.ByteStreamSend
-
-        @ Status of the last radio transmission
-        output port comStatus: Fw.SuccessCondition
-
-        @ Com data passing back out
-        output port comDataOut: Drv.ByteStreamRecv
+        import Drv.ByteStreamDriver
 
         # ----------------------------------------------------------------------
         # Implementation ports
@@ -77,12 +66,33 @@ module Radios {
         severity warning low \
         format "Bad packet received"
 
+        @ Event for a origin and destination ID report
+        event OriginDestinationIdReport(
+            originId: U8,
+            destinationId: U8
+        ) \
+        severity activity high \
+        format "Origin ID: {}, Destination ID: {}"
+
         # ----------------------------------------------------------------------
         # Commands
         # ----------------------------------------------------------------------
 
         @ Command to set the radio transmit power
         sync command SET_TX_POWER(power: I8)
+
+        @ Command to report the radio's origin and destination IDs
+        sync command REPORT_ORIGIN_DESTINATION_ID() \
+
+        # ----------------------------------------------------------------------
+        # Parameters
+        # ----------------------------------------------------------------------
+
+        @ Parameter for the radio's header origin ID
+        param ORIGIN_ID: U8 default 0xFF
+
+        @ Parameter for the radio's header destination ID
+        param DESTINATION_ID: U8 default 0xFF
 
         ###############################################################################
         # Standard AC Ports: Required for Channels, Events, Commands, and Parameters  #
@@ -107,6 +117,12 @@ module Radios {
 
         @ Port for sending telemetry channels to downlink
         telemetry port tlmOut
+
+        @ Port to return the value of a parameter
+        param get port prmGetOut
+
+        @Port to set the value of a parameter
+        param set port prmSetOut
 
     }
 }

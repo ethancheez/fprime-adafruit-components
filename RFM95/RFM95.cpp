@@ -6,7 +6,7 @@
 
 #include "Components/RFM95/RFM95.hpp"
 #include <Fw/Logger/Logger.hpp>
-#include "FpConfig.hpp"
+#include <config/FpConfig.hpp>
 
 namespace Radios {
 
@@ -18,6 +18,18 @@ RFM95::RFM95(const char* const compName) : RFM95ComponentBase(compName), m_mode(
 
 RFM95::~RFM95() {}
 
+void RFM95::parametersLoaded() {
+    Fw::ParamValid isValid = Fw::ParamValid::INVALID;
+    U8 originId = this->paramGet_ORIGIN_ID(isValid);
+    if (isValid == Fw::ParamValid::VALID) {
+        this->setOriginId(originId);
+    }
+    U8 destinationId = this->paramGet_DESTINATION_ID(isValid);
+    if (isValid == Fw::ParamValid::VALID) {
+        this->setDestinationId(destinationId);
+    }
+}
+
 void RFM95::config() {
     FW_ASSERT(this->isConnected_radioReset_OutputPort(0));
     FW_ASSERT(this->isConnected_spiReadWrite_OutputPort(0));
@@ -28,14 +40,22 @@ void RFM95::config() {
     Os::Task::delay(Fw::TimeInterval(0, 10000));  // 10 ms
 
     U8 deviceType = this->readRegister(RF95_REG_42_VERSION);
-    FW_ASSERT(deviceType != 0x00 && deviceType != 0xFF, deviceType);  // deviceType should not be 0x00 or 0xFF
+    // FW_ASSERT(deviceType != 0x00 && deviceType != 0xFF, deviceType);  // deviceType should not be 0x00 or 0xFF
+    if (deviceType == 0x00 || deviceType == 0xFF) {
+        Fw::Logger::log("[ERROR] RFM95 not found, device type: %d\n", deviceType);
+        return;  // No device
+    }
 
     // Set sleep mode, so we can also set LORA mode:
     this->writeRegister(RF95_REG_01_OP_MODE, RF95_MODE_SLEEP | RF95_LONG_RANGE_MODE);
     Os::Task::delay(Fw::TimeInterval(0, 10000));  // Wait for sleep mode to take over from say, CAD
     // Check we are in sleep mode, with LORA set
     U8 opMode = this->readRegister(RF95_REG_01_OP_MODE);
-    FW_ASSERT(opMode == (RF95_MODE_SLEEP | RF95_LONG_RANGE_MODE), opMode);  // No device
+    // FW_ASSERT(opMode == (RF95_MODE_SLEEP | RF95_LONG_RANGE_MODE), opMode);  // No device
+    if (opMode != (RF95_MODE_SLEEP | RF95_LONG_RANGE_MODE)) {
+        Fw::Logger::log("[ERROR] RFM95 not in sleep mode, opMode: %d\n", opMode);
+        return;  // No device
+    }
 
     // Set up FIFO
     // We configure so that we can use the entire 256 byte FIFO for either receive
@@ -47,54 +67,62 @@ void RFM95::config() {
 
     // Set up default configuration
     // No Sync Words in LORA mode.
-    this->setModemConfig(Bw125Cr45Sf128);  // Radio default
-    this->setPreambleLength(8);            // Default is 8
+    this->setModemConfig(Bw500Cr45Sf128);
+    this->setPreambleLength(8);  // Default is 8
     // An innocuous ISM frequency
     this->setFrequency(915.0);
     // Lowish power
     this->setTxPower(13);
 
     // Ready to begin transmitting
-    Fw::Success radioSuccess = Fw::Success::SUCCESS;
-    if (this->isConnected_comStatus_OutputPort(0)) {
-        this->comStatus_out(0, radioSuccess);
+    if (this->isConnected_ready_OutputPort(0)) {
+        this->ready_out(0);
     }
+
+    this->m_radioConfigured = true;
     Fw::Logger::log("RFM95 configured\n");
+}
+
+void RFM95::setOriginId(U8 originId) {
+    // Set the origin ID
+    this->m_originAddress = originId;
+    Fw::Logger::log("RFM95 Origin ID set to %d\n", this->m_originAddress);
+}
+
+void RFM95::setDestinationId(U8 destinationId) {
+    // Set the destination address
+    this->m_destinationAddress = destinationId;
+    Fw::Logger::log("RFM95 Destination ID set to %d\n", this->m_destinationAddress);
 }
 
 // ----------------------------------------------------------------------
 // Handler implementations for user-defined typed input ports
 // ----------------------------------------------------------------------
 
-Drv::SendStatus RFM95::comDataIn_handler(FwIndexType portNum, Fw::Buffer& sendBuffer) {
-    FW_ASSERT(this->isConnected_comStatus_OutputPort(0));
-
-    U32 bytesRemaining = sendBuffer.getSize();
+void RFM95 ::send_handler(FwIndexType portNum, Fw::Buffer& fwBuffer) {
+    U32 bytesRemaining = fwBuffer.getSize();
     U32 offset = 0;
     // Fw::Logger::log("Starting send total of %d bytes\n", bytesRemaining);
     while (bytesRemaining > 0) {
         U8 chunkSize = FW_MIN(bytesRemaining, RF95_MAX_MESSAGE_LEN);
 
-        this->send(&sendBuffer.getData()[offset], chunkSize);
+        this->send(&fwBuffer.getData()[offset], chunkSize);
 
         bytesRemaining -= chunkSize;
         offset += chunkSize;
         // Fw::Logger::log("Sending %d bytes. Remaining: %d\n", chunkSize, bytesRemaining);
     }
 
-    this->deallocate_out(0, sendBuffer);
-
     this->m_packetsSent++;
     if (this->isConnected_tlmOut_OutputPort(0)) {
         this->tlmWrite_PacketsSent(this->m_packetsSent);
     }
 
-    // Ready to transmit another packet
-    Fw::Success radioSuccess = Fw::Success::SUCCESS;
-    if (this->isConnected_comStatus_OutputPort(0)) {
-        this->comStatus_out(0, radioSuccess);
-    }
-    return Drv::SendStatus::SEND_OK;  // Always send ok to deframer as it does not handle this anyway
+    this->sendReturnOut_out(0, fwBuffer, Drv::ByteStreamStatus::OP_OK);
+}
+
+void RFM95 ::recvReturnIn_handler(FwIndexType portNum, Fw::Buffer& fwBuffer) {
+    this->deallocate_out(0, fwBuffer);
 }
 
 void RFM95::radioInterrupt_handler(FwIndexType portNum, Os::RawTime& cycleStart) {
@@ -186,6 +214,10 @@ void RFM95::radioInterrupt_handler(FwIndexType portNum, Os::RawTime& cycleStart)
 }
 
 void RFM95::run_handler(FwIndexType portNum, U32 context) {
+    if (!this->m_radioConfigured){
+        return;
+    }
+
     if (this->available()) {
         U8 bufLen = RF95_MAX_MESSAGE_LEN;
         U8 buf[bufLen];
@@ -211,7 +243,7 @@ void RFM95::run_handler(FwIndexType portNum, U32 context) {
             this->tlmWrite_RSSI(this->m_lastRssi);
         }
 
-        this->comDataOut_out(0, recvBuffer, Drv::RecvStatus::RECV_OK);
+        this->recv_out(0, recvBuffer, Drv::ByteStreamStatus::OP_OK);
     }
 
     if (this->isConnected_tlmOut_OutputPort(0)) {
@@ -225,6 +257,11 @@ void RFM95::run_handler(FwIndexType portNum, U32 context) {
 
 void RFM95 ::SET_TX_POWER_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, I8 power) {
     this->setTxPower(power);
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+void RFM95 ::REPORT_ORIGIN_DESTINATION_ID_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) {
+    this->log_ACTIVITY_HI_OriginDestinationIdReport(this->m_originAddress, this->m_destinationAddress);
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
@@ -251,6 +288,15 @@ void RFM95::waitPacketSent(U32 timeout_ms) {
         U32 diffms = diffUsec / 1000;
         if (diffms > timeout_ms) {
             this->log_WARNING_LO_WaitPacketSentTimeout();
+
+            // If timeout counter surpasses 5, reset the radio
+            this->m_radioTimeoutCounter++;
+            if (this->m_radioTimeoutCounter > 5) {
+                this->m_radioConfigured = false;
+                this->config();
+                this->m_radioTimeoutCounter = 0;
+            }
+
             return;
         }
         Os::Task::delay(Fw::TimeInterval(0, 1000));  // 1 ms

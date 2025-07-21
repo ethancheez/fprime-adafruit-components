@@ -80,19 +80,35 @@ class RFM95 : public RFM95ComponentBase {
     //! Destroy RFM95 object
     ~RFM95();
 
+    /**
+     * \brief Emit parameter loaded EVR
+     */
+    void parametersLoaded() override;
+
     void config();
+
+    void setOriginId(U8 originId);
+
+    void setDestinationId(U8 destinationId);
 
   private:
     // ----------------------------------------------------------------------
     // Handler implementations for user-defined typed input ports
     // ----------------------------------------------------------------------
 
-    //! Handler implementation for comDataIn
+    //! Handler implementation for send
     //!
-    //! Data coming in from the framing component
-    Drv::SendStatus comDataIn_handler(FwIndexType portNum,    //!< The port number
-                                      Fw::Buffer& sendBuffer  //!< Data to send
-                                      ) override;
+    //! Invoke this port to send data out the driver
+    void send_handler(FwIndexType portNum,  //!< The port number
+                      Fw::Buffer& fwBuffer  //!< The buffer
+                      ) override;
+
+    //! Handler implementation for recvReturnIn
+    //!
+    //! Port receiving back ownership of data sent out on $recv port
+    void recvReturnIn_handler(FwIndexType portNum,  //!< The port number
+                              Fw::Buffer& fwBuffer  //!< The buffer
+                              ) override;
 
     //! Handler implementation for radioInterrupt
     //!
@@ -120,23 +136,30 @@ class RFM95 : public RFM95ComponentBase {
                                  U32 cmdSeq,           //!< The command sequence number
                                  I8 power) override;
 
+    //! Handler implementation for command REPORT_ORIGIN_DESTINATION_ID
+    //!
+    //! Command to report the radio's origin and destination IDs
+    void REPORT_ORIGIN_DESTINATION_ID_cmdHandler(FwOpcodeType opCode,  //!< The opcode
+                                                 U32 cmdSeq            //!< The command sequence number
+                                                 ) override;
+
   public:
     /// ----------------------------------------------------------------------
     /// Public Helpers
     /// ---------------------------------------------------------------------
 
-    /// @brief Select one of the predefined modem configurations. If you need a modem configuration not provided 
+    /// @brief Select one of the predefined modem configurations. If you need a modem configuration not provided
     /// here, use setModemRegisters() with your own ModemConfig.
     /// Caution: the slowest protocols may require a radio module with TCXO temperature controlled oscillator
     /// for reliable operation.
     /// @param index The configuration choice.
     void setModemConfig(ModemConfigChoice index);
 
-    /// @brief Sets the length of the preamble in bytes. 
-    /// Caution: this should be set to the same 
+    /// @brief Sets the length of the preamble in bytes.
+    /// Caution: this should be set to the same
     /// value on all nodes in your network. Default is 8.
     /// Sets the message preamble length in RH_RF95_REG_??_PREAMBLE_?SB
-    /// @param bytes Preamble length in bytes.  
+    /// @param bytes Preamble length in bytes.
     void setPreambleLength(U16 bytes);
 
     /// @brief Sets the transmitter and receiver center frequency.
@@ -146,20 +169,20 @@ class RFM95 : public RFM95ComponentBase {
 
     /// @brief Sets the transmitter power output level, and configures the transmitter pin.
     /// Be a good neighbour and set the lowest power level you need.
-    /// Some SX1276/77/78/79 and compatible modules (such as RFM95/96/97/98) 
+    /// Some SX1276/77/78/79 and compatible modules (such as RFM95/96/97/98)
     /// use the PA_BOOST transmitter pin for high power output (and optionally the PA_DAC)
-    /// while some (such as the Modtronix inAir4 and inAir9) 
+    /// while some (such as the Modtronix inAir4 and inAir9)
     /// use the RFO transmitter pin for lower power but higher efficiency.
     /// You must set the appropriate power level and useRFO argument for your module.
     /// Check with your module manufacturer which transmtter pin is used on your module
-    /// to ensure you are setting useRFO correctly. 
-    /// Failure to do so will result in very low 
+    /// to ensure you are setting useRFO correctly.
+    /// Failure to do so will result in very low
     /// transmitter power output.
     /// Caution: legal power limits may apply in certain countries.
     /// After init(), the power will be set to 13dBm, with useRFO false (ie PA_BOOST enabled).
-    /// @param power Transmitter power level in dBm. For RFM95/96/97/98 LORA with useRFO false, 
-    /// valid values are from +2 to +20. For 18, 19 and 20, PA_DAC is enabled, 
-    /// For Modtronix inAir4 and inAir9 with useRFO true (ie RFO pins in use), 
+    /// @param power Transmitter power level in dBm. For RFM95/96/97/98 LORA with useRFO false,
+    /// valid values are from +2 to +20. For 18, 19 and 20, PA_DAC is enabled,
+    /// For Modtronix inAir4 and inAir9 with useRFO true (ie RFO pins in use),
     /// valid values are from 0 to 15.
     /// @param useRFO If true, enables the use of the RFO transmitter pins instead of
     /// the PA_BOOST pin (false). Choose the correct setting for your module.
@@ -172,7 +195,7 @@ class RFM95 : public RFM95ComponentBase {
     // Private Helpers
     // ----------------------------------------------------------------------
 
-    /// @brief Tests whether a new message is available from the Driver. 
+    /// @brief Tests whether a new message is available from the Driver.
     /// On most drivers, this will also put the Driver into RHModeRx mode until
     /// a message is actually received by the transport, when it will be returned to RHModeIdle.
     /// This can be called multiple times in a timeout loop
@@ -185,10 +208,10 @@ class RFM95 : public RFM95ComponentBase {
     void waitPacketSent(U32 timeout_ms = 1000);
 
     /// @brief Waits until any previous transmit packet is finished being transmitted with waitPacketSent().
-    /// Then optionally waits for Channel Activity Detection (CAD) 
+    /// Then optionally waits for Channel Activity Detection (CAD)
     /// to show the channnel is clear (if the radio supports CAD) by calling waitCAD().
     /// Then loads a message into the transmitter and starts the transmitter. Note that a message length
-    /// of 0 is permitted. 
+    /// of 0 is permitted.
     /// @param data Array of data to be sent
     /// @param len Number of bytes of data to send
     /// specify the maximum time in ms to wait. If 0 (the default) do not wait for CAD before transmitting.
@@ -201,24 +224,25 @@ class RFM95 : public RFM95ComponentBase {
     /// You should be sure to call this function frequently enough to not miss any messages
     /// It is recommended that you call it in your main loop.
     /// @param data Location to copy the received message
-    /// @param len Pointer to the number of octets available in buf. The number be reset to the actual number of octets copied.
+    /// @param len Pointer to the number of octets available in buf. The number be reset to the actual number of octets
+    /// copied.
     void recv(U8* data, U8* len);
 
-    /// @brief Sets all the registers required to configure the data modem in the radio, including the bandwidth, 
-    /// spreading factor etc. You can use this to configure the modem with custom configurations if none of the 
+    /// @brief Sets all the registers required to configure the data modem in the radio, including the bandwidth,
+    /// spreading factor etc. You can use this to configure the modem with custom configurations if none of the
     /// canned configurations in ModemConfigChoice suit you.
     /// @param config A ModemConfig structure containing values for the modem configuration registers.
     void setModemRegisters(ModemConfig* config);
 
-    /// @brief /// If current mode is Rx or Tx changes it to Idle. If the transmitter or receiver is running, 
+    /// @brief /// If current mode is Rx or Tx changes it to Idle. If the transmitter or receiver is running,
     /// disables them.
     void setModeIdle();
 
     /// @brief If current mode is Rx or Idle, changes it to Tx.
     /// Starts the transmitter in the RF95/96/97/98.
     void setModeTx();
-    
-    /// @brief If current mode is Tx or Idle, changes it to Rx. 
+
+    /// @brief If current mode is Tx or Idle, changes it to Rx.
     /// Starts the receiver in the RF95/96/97/98.
     void setModeRx();
 
@@ -265,6 +289,9 @@ class RFM95 : public RFM95ComponentBase {
     U8 m_recvBuffer[RF95_MAX_MESSAGE_LEN] = {0};
     U8 m_recvBufferLen = 0;
     U8 m_recvBufferValid = false;
+
+    U32 m_radioTimeoutCounter = 0;
+    bool m_radioConfigured = false;
 
     U32 m_packetsSent = 0;
     U32 m_packetsReceived = 0;
