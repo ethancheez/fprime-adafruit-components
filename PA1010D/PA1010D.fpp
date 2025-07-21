@@ -16,10 +16,15 @@ module Sensors {
     }
 
     struct GPS_Location {
-        latitude: GPS_DataUnit,
+        latitude: GPS_DataUnit_F64,
         lat_NS: string,
-        longitude: GPS_DataUnit,
+        longitude: GPS_DataUnit_F64,
         lng_EW: string,
+    }
+
+    struct GPS_Constellations_Sats {
+        constellation: string,
+        num_satellites: U8,
     }
 
     enum GPS_NMEA_OUTPUTS: U8 {
@@ -33,20 +38,22 @@ module Sensors {
 
     struct GPS_NMEA_State {
         protocol: GPS_NMEA_OUTPUTS,
-        state: Fw.On,
+        $state: Fw.On,
     }
 
     array GPS_NMEA_States = [6] GPS_NMEA_State
 
+    array GPS_Constellations_NumSatellites = [4] GPS_Constellations_Sats
+
     @ Component for PA1010D GPS Module
-    passive component PA1010D {
+    active component PA1010D {
 
         # ----------------------------------------------------------------------
         # I/O ports
         # ----------------------------------------------------------------------
 
         @ Port to receive calls from the rate group
-        sync input port run: Svc.Sched
+        async input port run: Svc.Sched
 
         @ Port to read from I2C port
         output port i2cRead: Drv.I2c
@@ -60,6 +67,15 @@ module Sensors {
         # ----------------------------------------------------------------------
         # Telemetry
         # ----------------------------------------------------------------------
+
+        @ Telemetry for number of satellites
+        telemetry GPS_NumSatellites: I32
+
+        @ Telemetry for the number of satellites used for each constellation
+        telemetry GPS_Constellations: GPS_Constellations_NumSatellites
+
+        @ Telemetry for Horizontal Dilution of Precision
+        telemetry GPS_HDOP: F64
 
         @ Telemetry for latitude and longitude
         telemetry GPS_Location: Sensors.GPS_Location
@@ -81,7 +97,15 @@ module Sensors {
         # ----------------------------------------------------------------------
 
         @ Command to enable/disable NMEA outputs
-        sync command SET_NMEA_OUTPUT(nmea: Sensors.GPS_NMEA_OUTPUTS, state: Fw.On)
+        sync command SET_NMEA_OUTPUT(nmea: Sensors.GPS_NMEA_OUTPUTS, $state: Fw.On)
+
+        @ Command to enable/disable constellation use
+        sync command ENABLE_CONSTELLATIONS(
+            GPS: bool,
+            GLONASS: bool,
+            GALILEO: bool,
+            BEIDOU: bool
+        )
 
         @ Command to change the update rate of the GPS
         sync command SET_UPDATE_RATE_MS(ms: U16)

@@ -5,12 +5,13 @@
 // ======================================================================
 
 #include "Components/PA1010D/PA1010D.hpp"
-#include "FpConfig.hpp"
+#include <config/FpConfig.hpp>
 #include "Fw/Logger/Logger.hpp"
 
+#include <cmath>
 #include <string>
 
-namespace Sensors {
+namespace Adafruit {
 
 /**
  * \brief Construct PA1010D object
@@ -19,15 +20,22 @@ PA1010D ::PA1010D(const char* const compName)
     : PA1010DComponentBase(compName),
       m_polyDb_offset(0),
       m_i2cDevAddress(0x10),
-      gps_utc_date("", "ddmmyy"),
-      gps_utc_time("", "hhmmss.sss"),
-      gps_latitude("", "ddmm.mmmm"),
-      gps_latitude_NS("N"),
-      gps_longitude("", "dddmm.mmmm"),
-      gps_longitude_EW("W"),
-      gps_speed(0.0, "km/hr"),
-      gps_altitude(0.0, "m"),
-      nmea_states{'0', '1', '1', '1', '0', '0'} {}
+      gps_utc_date(Fw::String(""), Fw::String("ddmmyy")),
+      gps_utc_time(Fw::String(""), Fw::String("hhmmss.sss")),
+      gps_latitude(0.0, Fw::String("degrees")),
+      gps_latitude_NS(Fw::String((std::string() + 'N').c_str())),
+      gps_longitude(0.0, Fw::String("degrees")),
+      gps_longitude_EW(Fw::String((std::string() + 'W').c_str())),
+      gps_speed(0.0, Fw::String("m/s")),
+      gps_altitude(0.0, Fw::String("m")),
+      nmea_states{'0', '1', '0', '1', '0', '0'},  // [GLL, RMC, VTG, GGA, GSA, GSV]
+      gps_sats_used(0),
+      gps_hdop(0.0) {
+    this->gps_sats_used_constellations[0] = {Fw::String("GPS"), 0};
+    this->gps_sats_used_constellations[1] = {Fw::String("GLONASS"), 0};
+    this->gps_sats_used_constellations[2] = {Fw::String("GALILEO"), 0};
+    this->gps_sats_used_constellations[3] = {Fw::String("BEIDOU"), 0};
+}
 
 /**
  * \brief Destroy PA1010D object
@@ -40,16 +48,36 @@ PA1010D ::~PA1010D() {}
  * Sets the default NMEA outputs to have RMC, VTG, and GGA
  */
 void PA1010D::config() {
-    CHAR pmtk[] = "PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
-    pmtk[8] = this->nmea_states[0];
-    pmtk[10] = this->nmea_states[1];
-    pmtk[12] = this->nmea_states[2];
-    pmtk[14] = this->nmea_states[3];
-    pmtk[16] = this->nmea_states[4];
-    pmtk[18] = this->nmea_states[5];
+    // Set default NMEA Outputs
+    {
+        CHAR pmtk[] = "PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0";
+        pmtk[8] = this->nmea_states[0];
+        pmtk[10] = this->nmea_states[1];
+        pmtk[12] = this->nmea_states[2];
+        pmtk[14] = this->nmea_states[3];
+        pmtk[16] = this->nmea_states[4];
+        pmtk[18] = this->nmea_states[5];
+        Fw::Buffer buf(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
+        this->sendCommand(buf);
+    }
+    // Enable all constellations
+    {
+        CHAR pmtk[] = "PMTK353,1,1,1,0,1";
+        Fw::Buffer buf(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
+        this->sendCommand(buf);
+    }
+    // Set update rate
+    {
+        CHAR pmtk[] = "PMTK220,100";
+        Fw::Buffer buf(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
+        this->sendCommand(buf);
 
-    Fw::Buffer buf(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
-    this->sendCommand(buf);
+        CHAR pmtk2[] = "PMTK300,200,0,0,0,0";
+        Fw::Buffer buf2(reinterpret_cast<U8*>(pmtk2), sizeof pmtk2);
+        this->sendCommand(buf2);
+    }
+
+    this->m_configured = true;
 }
 
 /**
@@ -66,71 +94,83 @@ void PA1010D::setPolyDbOffset(U32 offset) {
 // ----------------------------------------------------------------------
 
 //! Handler implementation for run
-void PA1010D ::run_handler(NATIVE_INT_TYPE portNum, NATIVE_UINT_TYPE context) {
+void PA1010D ::run_handler(FwIndexType portNum, U32 context) {
+    if (!this->m_configured) {
+        return;
+    }
+
+    Os::RawTime now;
+    now.now();
+    U32 dt_us;  // [us]
+    now.getDiffUsec(this->last_ts, dt_us);
+    this->last_ts.now();
+    F64 freq = 1 / (dt_us / 1000000.0);  // [Hz]
+
     // NMEA State Telemetry
-    Sensors::GPS_NMEA_States states;
-    states[0] = {Sensors::GPS_NMEA_OUTPUTS::GLL, (this->nmea_states[0] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[1] = {Sensors::GPS_NMEA_OUTPUTS::RMC, (this->nmea_states[1] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[2] = {Sensors::GPS_NMEA_OUTPUTS::VTG, (this->nmea_states[2] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[3] = {Sensors::GPS_NMEA_OUTPUTS::GGA, (this->nmea_states[3] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[4] = {Sensors::GPS_NMEA_OUTPUTS::GSA, (this->nmea_states[4] == '1') ? Fw::On::ON : Fw::On::OFF};
-    states[5] = {Sensors::GPS_NMEA_OUTPUTS::GSV, (this->nmea_states[5] == '1') ? Fw::On::ON : Fw::On::OFF};
+    Adafruit::GPS_NMEA_States states;
+    states[0] = {Adafruit::GPS_NMEA_OUTPUTS::GLL, (this->nmea_states[0] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[1] = {Adafruit::GPS_NMEA_OUTPUTS::RMC, (this->nmea_states[1] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[2] = {Adafruit::GPS_NMEA_OUTPUTS::VTG, (this->nmea_states[2] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[3] = {Adafruit::GPS_NMEA_OUTPUTS::GGA, (this->nmea_states[3] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[4] = {Adafruit::GPS_NMEA_OUTPUTS::GSA, (this->nmea_states[4] == '1') ? Fw::On::ON : Fw::On::OFF};
+    states[5] = {Adafruit::GPS_NMEA_OUTPUTS::GSV, (this->nmea_states[5] == '1') ? Fw::On::ON : Fw::On::OFF};
 
     if (this->isConnected_tlmOut_OutputPort(0)) {
         this->tlmWrite_NMEA_States(states);
+        this->tlmWrite_freq(freq);
     }
 
     // Get GPS Data
-    U8 data[256] = {'\0'};
-    Fw::Buffer buf(data, sizeof data);
-    Drv::I2cStatus stat = this->i2cRead_out(0, this->m_i2cDevAddress, buf);
+    U8 reg_data[256];
+    Fw::Buffer buffer(reg_data, 256);
+    Drv::I2cStatus stat = this->i2cRead_out(0, this->m_i2cDevAddress, buffer);
     if (stat != Drv::I2cStatus::I2C_OK) {
         this->log_WARNING_HI_I2cError(stat);
         return;
     }
 
-    if (buf.getData() == nullptr || buf.getSize() < 6) {
+    if (buffer.getData() == nullptr || buffer.getSize() < 6 || buffer.getData()[0] != '$') {
         return;
     }
 
-    parse_nmea(buf, "$GNRMC");
-    parse_nmea(buf, "$GNVTG");
-    parse_nmea(buf, "$GNGGA");
-
-    if (this->isConnected_tlmOut_OutputPort(0)) {
-        GPS_Time gps_time;
-        gps_time.setutc_date(this->gps_utc_date);
-        gps_time.setutc_time(this->gps_utc_time);
-        this->tlmWrite_GPS_Time(gps_time);
-
-        GPS_Location gps_location;
-        gps_location.setlatitude(this->gps_latitude);
-        gps_location.setlat_NS(this->gps_latitude_NS);
-        gps_location.setlongitude(this->gps_longitude);
-        gps_location.setlng_EW(this->gps_longitude_EW);
-        this->tlmWrite_GPS_Location(gps_location);
-
-        this->tlmWrite_GPS_Speed(this->gps_speed);
-
-        this->tlmWrite_GPS_Altitude(this->gps_altitude);
+    if (nmea_states[0] == '1') {
+        // parse_nmea(buffer, "GLL"); // GLL is not used in the current implementation
+    }
+    if (nmea_states[1] == '1') {
+        parse_nmea(buffer, "RMC");
+    }
+    if (nmea_states[2] == '1') {
+        // parse_nmea(buffer, "VTG"); // VTG is not used in the current implementation
+    }
+    if (nmea_states[3] == '1') {
+        parse_nmea(buffer, "GGA");
+    }
+    if (nmea_states[4] == '1') {
+        parse_nmea(buffer, "GSA");
+    }
+    if (nmea_states[5] == '1') {
+        // parse_nmea(buffer, "GSV"); // GSV is not used in the current implementation
     }
 
     if (this->isConnected_setPolyDb_OutputPort(0)) {
         Fw::PolyType vals[] = {
             static_cast<void*>(const_cast<char*>(this->gps_utc_date.getvalue().toChar())),
             static_cast<void*>(const_cast<char*>(this->gps_utc_time.getvalue().toChar())),
-            static_cast<void*>(const_cast<char*>(this->gps_latitude.getvalue().toChar())),
+            this->gps_latitude.getvalue(),
             static_cast<void*>(const_cast<char*>(this->gps_latitude_NS.toChar())),
-            static_cast<void*>(const_cast<char*>(this->gps_longitude.getvalue().toChar())),
+            this->gps_longitude.getvalue(),
             static_cast<void*>(const_cast<char*>(this->gps_longitude_EW.toChar())),
             this->gps_speed.getvalue(),
             this->gps_altitude.getvalue(),
+            this->gps_sats_used,
+            this->gps_hdop,
         };
         Svc::MeasurementStatus mstat = Svc::MeasurementStatus::OK;
         Fw::Time ts(TB_NONE, 0, 0);
 
-        for (U32 entry = 0; entry < 8; entry++) {
-            this->setPolyDb_out(0, entry + m_polyDb_offset, mstat, ts, vals[entry]);
+        for (U32 entry = 0; entry < 10; entry++) {
+            Svc::PolyDbCfg::PolyDbEntry dbEntry = static_cast<Svc::PolyDbCfg::PolyDbEntry::T>(entry + m_polyDb_offset);
+            this->setPolyDb_out(0, dbEntry, mstat, ts, vals[entry]);
 
             if (mstat != Svc::MeasurementStatus::OK) {
                 this->log_WARNING_HI_PolyDbSetError(mstat);
@@ -146,26 +186,26 @@ void PA1010D ::run_handler(NATIVE_INT_TYPE portNum, NATIVE_UINT_TYPE context) {
 //! Handler implementation for command SET_NMEA_OUTPUT
 void PA1010D ::SET_NMEA_OUTPUT_cmdHandler(FwOpcodeType opCode,
                                           U32 cmdSeq,
-                                          Sensors::GPS_NMEA_OUTPUTS nmea,
+                                          Adafruit::GPS_NMEA_OUTPUTS nmea,
                                           Fw::On state) {
     U8 index = 0;
     switch (nmea) {
-        case Sensors::GPS_NMEA_OUTPUTS::GLL:
+        case Adafruit::GPS_NMEA_OUTPUTS::GLL:
             index = 0;
             break;
-        case Sensors::GPS_NMEA_OUTPUTS::RMC:
+        case Adafruit::GPS_NMEA_OUTPUTS::RMC:
             index = 1;
             break;
-        case Sensors::GPS_NMEA_OUTPUTS::VTG:
+        case Adafruit::GPS_NMEA_OUTPUTS::VTG:
             index = 2;
             break;
-        case Sensors::GPS_NMEA_OUTPUTS::GGA:
+        case Adafruit::GPS_NMEA_OUTPUTS::GGA:
             index = 3;
             break;
-        case Sensors::GPS_NMEA_OUTPUTS::GSA:
+        case Adafruit::GPS_NMEA_OUTPUTS::GSA:
             index = 4;
             break;
-        case Sensors::GPS_NMEA_OUTPUTS::GSV:
+        case Adafruit::GPS_NMEA_OUTPUTS::GSV:
             index = 5;
     }
 
@@ -179,10 +219,41 @@ void PA1010D ::SET_NMEA_OUTPUT_cmdHandler(FwOpcodeType opCode,
     pmtk[16] = this->nmea_states[4];
     pmtk[18] = this->nmea_states[5];
 
-    Fw::Buffer buf(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
-    Drv::I2cStatus stat = this->sendCommand(buf);
+    Fw::Buffer buffer(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
+    Drv::I2cStatus stat = this->sendCommand(buffer);
     if (stat != Drv::I2cStatus::I2C_OK) {
-        this->log_WARNING_HI_I2cError(stat);
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
+        return;
+    }
+
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+//! Handler implementation for command ENABLE_CONSTELLATIONS
+void PA1010D ::ENABLE_CONSTELLATIONS_cmdHandler(FwOpcodeType opCode,
+                                                U32 cmdSeq,
+                                                bool GPS,
+                                                bool GLONASS,
+                                                bool GALILEO,
+                                                bool BEIDOU) {
+    CHAR pmtk[] = "PMTK353,0,0,0,0,0";
+
+    if (GPS) {
+        pmtk[8] = '1';
+    }
+    if (GLONASS) {
+        pmtk[10] = '1';
+    }
+    if (GALILEO) {
+        pmtk[12] = '1';
+    }
+    if (BEIDOU) {
+        pmtk[16] = '1';
+    }
+
+    Fw::Buffer buffer(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
+    Drv::I2cStatus stat = this->sendCommand(buffer);
+    if (stat != Drv::I2cStatus::I2C_OK) {
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
         return;
     }
@@ -199,10 +270,9 @@ void PA1010D ::SET_UPDATE_RATE_MS_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U1
     memcpy(pmtk, pmtk_header, sizeof pmtk_header);
     memcpy(&pmtk[sizeof pmtk_header], &ms_str[0], ms_str.length());
 
-    Fw::Buffer buf(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
-    Drv::I2cStatus stat = this->sendCommand(buf);
+    Fw::Buffer buffer(reinterpret_cast<U8*>(pmtk), sizeof pmtk);
+    Drv::I2cStatus stat = this->sendCommand(buffer);
     if (stat != Drv::I2cStatus::I2C_OK) {
-        this->log_WARNING_HI_I2cError(stat);
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
         return;
     }
@@ -215,41 +285,6 @@ void PA1010D ::SET_UPDATE_RATE_MS_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U1
 // ----------------------------------------------------------------------
 
 /**
- * \brief Get the indices of the delimiters (',') for the protocol frame
- *
- * The function searches for a match of the protocol and stores all indices of ','
- * within a vector until the next protocol is read (indicated by '$'), or when the
- * end of the buffer is reached (can also be indicated by a sequence of "\n\n").
- *
- * \param buf: buffer contaning the entire byte stream read from the GPS
- * \param protocol: the protocol string to look for
- * \return: a vector containing the indices of all the delimiters for that protocol
- */
-std::vector<U8> PA1010D::get_delimiters(Fw::Buffer buf, const CHAR* protocol) {
-    U32 start = 0;
-    U32 end = 0;
-    bool found = false;
-    for (U32 i = 0; i < buf.getSize(); i++) {
-        if (strncmp((const char*)&buf.getData()[i], protocol, 6) == 0) {
-            start = i;
-            found = true;
-        } else if (found && (buf.getData()[i] == '$' || (buf.getData()[i] == '\n' && buf.getData()[i + 1] == '\n'))) {
-            break;
-        }
-        end = i;
-    }
-
-    std::vector<U8> delimiters;
-    for (U32 i = start; i <= end; i++) {
-        if (buf.getData()[i] == ',') {
-            delimiters.push_back(i);
-        }
-    }
-
-    return delimiters;
-}
-
-/**
  * \brief Parses the NMEA frame for the specified protocol
  *
  * The function makes use of `get_delimiters()` to know where the correct NMEA
@@ -260,80 +295,136 @@ std::vector<U8> PA1010D::get_delimiters(Fw::Buffer buf, const CHAR* protocol) {
  * \param protocol: the protocol string to parse
  */
 void PA1010D::parse_nmea(Fw::Buffer buf, const CHAR* protocol) {
-    std::vector<U8> delimiters = this->get_delimiters(buf, protocol);
-
-    if (delimiters.size() == 0) {
-        return;
-    }
-
-    for (U32 i = 0; i < delimiters.size() - 1; i++) {
-        if (delimiters[i] > delimiters[i + 1]) {
-            return;
+    // Keep looping buffer because there can be multiple of the same packet within the buffer
+    U32 protocolIndex = 0;
+    while (protocolIndex < buf.getSize()) {
+        // Find protocol in buffer
+        for (; protocolIndex < buf.getSize(); protocolIndex++) {
+            if (strncmp((const char*)&buf.getData()[protocolIndex], protocol, 3) == 0) {
+                break;
+            }
         }
-    }
-
-    // for (U32 i = delimiters[0] - 6; i <= delimiters[delimiters.size() - 1] + 4; i++) {
-    //     Fw::Logger::logMsg("%c", buf.getData()[i]);
-    // }
-    // Fw::Logger::logMsg("\n");
-
-    if (protocol == "$GNRMC" && delimiters.size() == 12 && buf.getData()[delimiters[1] + 1] == 'A') {
-        CHAR utc_date[15] = {'\0'};
-        CHAR utc_time[15] = {'\0'};
-        CHAR lat[15] = {'\0'};
-        CHAR lng[15] = {'\0'};
-        CHAR lat_NS[15] = {'\0'};
-        CHAR lng_EW[15] = {'\0'};
-
-        if (delimiters[1] - delimiters[0] <= 1 || delimiters[3] - delimiters[2] <= 1 ||
-            delimiters[4] - delimiters[3] <= 1 || delimiters[5] - delimiters[4] <= 1 ||
-            delimiters[6] - delimiters[5] <= 1 || delimiters[9] - delimiters[8] <= 1) {
+        if (protocolIndex == buf.getSize()) {
             return;
         }
 
-        memcpy(utc_time, &buf.getData()[delimiters[0] + 1], delimiters[1] - delimiters[0] - 1);
-        memcpy(lat, &buf.getData()[delimiters[2] + 1], delimiters[3] - delimiters[2] - 1);
-        memcpy(lat_NS, &buf.getData()[delimiters[3] + 1], delimiters[4] - delimiters[3] - 1);
-        memcpy(lng, &buf.getData()[delimiters[4] + 1], delimiters[5] - delimiters[4] - 1);
-        memcpy(lng_EW, &buf.getData()[delimiters[5] + 1], delimiters[6] - delimiters[5] - 1);
-        memcpy(utc_date, &buf.getData()[delimiters[8] + 1], delimiters[9] - delimiters[8] - 1);
+        // Debug print
+        // for (U32 i = protocolIndex; i < buf.getSize() && buf.getData()[i] != '\n'; i++) {
+        //     printf("%c", buf.getData()[i]);
+        // }
+        // printf("\n");
 
-        this->gps_utc_date.setvalue(utc_date);
-        this->gps_utc_time.setvalue(utc_time);
-        this->gps_latitude.setvalue(lat);
-        this->gps_latitude_NS = Fw::String(lat_NS);
-        this->gps_longitude.setvalue(lng);
-        this->gps_longitude_EW = Fw::String(lng_EW);
-    } else if (protocol == "$GNVTG" && delimiters.size() == 9 && delimiters[7] - delimiters[6] - 1 > 0) {
-        CHAR speed[15] = {'\0'};
-        memset(speed, 0, sizeof(speed));
+        CHAR* pointer = reinterpret_cast<CHAR*>(&buf.getData()[protocolIndex]);
+        if (strcmp(protocol, "RMC") == 0) {
+            RMCPacket packet;
+            FwIndexType ret =
+                sscanf(pointer, "RMC,%f,%c,%f,%c,%f,%c,%f,%f,%u", &packet.utcTime, &packet.status, &packet.latitude,
+                       &packet.lat_NS, &packet.longitude, &packet.lng_EW, &packet.speed, &packet.course, &packet.date);
+            // printf("RMC: %f %c %f %c %f %c %f %f %u\n", packet.utcTime, packet.status, packet.latitude,
+            // packet.lat_NS,
+            //        packet.longitude, packet.lng_EW, packet.speed, packet.course, packet.date);
 
-        memcpy(speed, &buf.getData()[delimiters[6] + 1], delimiters[7] - delimiters[6] - 1);
+            // Not all items were found, skip
+            if (ret < 9) {
+                protocolIndex += 1;
+                continue;
+            }
 
-        try {
-            F64 speed_val = std::stof(speed);
-            this->gps_speed.setvalue(speed_val);
-        } catch (const std::exception& e) {
-            // Invalid float value
+            // Lat conversion to ##.####
+            U32 lat_dd = packet.latitude / 100;
+            F32 lat_mm = std::fmod(packet.latitude, 100);
+            F32 lat_deg = lat_dd + lat_mm / 60;
+            if (packet.lat_NS == 'S') {
+                lat_deg *= -1;
+            }
+            // Lng conversion to ##.####
+            U32 lng_ddd = packet.longitude / 100;
+            F32 lng_mm = std::fmod(packet.longitude, 100);
+            F32 lng_deg = lng_ddd + lng_mm / 60;
+            if (packet.lng_EW == 'W') {
+                lng_deg *= -1;
+            }
+
+            F32 speed_mps = packet.speed * 0.514444;  // [m/s]
+
+            CHAR date[7] = {'\0'};
+            CHAR time[11] = {'\0'};
+            snprintf(date, sizeof(date), "%06u", packet.date);
+            snprintf(time, sizeof(time), "%010.3f", packet.utcTime);
+            this->gps_utc_date.setvalue(Fw::String(date));
+            this->gps_utc_time.setvalue(Fw::String(time));
+            this->gps_latitude.setvalue(lat_deg);
+            this->gps_latitude_NS = (std::string() + packet.lat_NS).c_str();
+            this->gps_longitude.setvalue(lng_deg);
+            this->gps_longitude_EW = (std::string() + packet.lng_EW).c_str();
+
+            this->gps_speed.setvalue(speed_mps);
+            this->tlmWrite_GPS_Speed(this->gps_speed);
+
+            GPS_Time gps_time;
+            gps_time.setutc_date(this->gps_utc_date);
+            gps_time.setutc_time(this->gps_utc_time);
+            this->tlmWrite_GPS_Time(gps_time);
+
+            GPS_Location gps_location;
+            gps_location.setlatitude(this->gps_latitude);
+            gps_location.setlat_NS(this->gps_latitude_NS);
+            gps_location.setlongitude(this->gps_longitude);
+            gps_location.setlng_EW(this->gps_longitude_EW);
+            this->tlmWrite_GPS_Location(gps_location);
+
+            // Found all items! No need to look for another instance
             return;
+        } else if (strcmp(protocol, "GGA") == 0) {
+            GGAPacket packet;
+            FwIndexType ret = sscanf(pointer, "GGA,%f,%f,%c,%f,%c,%u,%u,%f,%f", &packet.utcTime, &packet.latitude,
+                                         &packet.lat_NS, &packet.longitude, &packet.lng_EW, &packet.fix,
+                                         &packet.satsUsed, &packet.hdop, &packet.msl_altitude);
+            // printf("GGA: %f %f %c %f %c %u %u %f %f\n", packet.utcTime, packet.latitude, packet.lat_NS,
+            //        packet.longitude, packet.lng_EW, packet.fix, packet.satsUsed, packet.hdop, packet.msl_altitude);
+
+            // Not all items were found, skip
+            if (ret < 9) {
+                protocolIndex += 1;
+                continue;
+            }
+
+            this->gps_altitude.setvalue(packet.msl_altitude);
+            this->tlmWrite_GPS_Altitude(this->gps_altitude);
+
+            this->gps_sats_used = packet.satsUsed;
+            this->tlmWrite_GPS_NumSatellites(this->gps_sats_used);
+
+            this->gps_hdop = packet.hdop;
+            this->tlmWrite_GPS_HDOP(this->gps_hdop);
+
+            // Found all items! No need to look for another instance
+            return;
+        } else if (strcmp(protocol, "GSA") == 0) {
+            U8 satCount = 0;
+            for (U8 i = protocolIndex + 7; i < buf.getSize() && i + 1 < buf.getSize(); i += 3) {
+                if (buf.getData()[i + 1] == ',') {
+                    break;
+                }
+                satCount++;
+                if (satCount == 12) {  // 12 is the max for this GPS
+                    break;
+                }
+            }
+
+            if (buf.getData()[protocolIndex - 1] == 'P') {
+                this->gps_sats_used_constellations[0].setnum_satellites(satCount);
+            } else if (buf.getData()[protocolIndex - 1] == 'L') {
+                this->gps_sats_used_constellations[1].setnum_satellites(satCount);
+            } else if (buf.getData()[protocolIndex - 1] == 'A') {
+                this->gps_sats_used_constellations[2].setnum_satellites(satCount);
+            } else if (buf.getData()[protocolIndex - 1] == 'B') {
+                this->gps_sats_used_constellations[3].setnum_satellites(satCount);
+            }
+            this->tlmWrite_GPS_Constellations(this->gps_sats_used_constellations);
         }
 
-    } else if (protocol == "$GNGGA" && delimiters.size() == 14 && buf.getData()[delimiters[5] + 1] == '1') {
-        CHAR altitude[15] = {'\0'};
-        memset(altitude, 0, sizeof(altitude));
-
-        memcpy(altitude, &buf.getData()[delimiters[8] + 1], delimiters[9] - delimiters[8] - 1);
-
-        try {
-            F64 altitude_val = std::stof(altitude);
-            this->gps_altitude.setvalue(altitude_val);
-        } catch (const std::exception& e) {
-            // Invalid float value
-            return;
-        }
-
-    } else {
-        return;
+        protocolIndex += 1;
     }
 }
 
@@ -347,12 +438,13 @@ void PA1010D::parse_nmea(Fw::Buffer buf, const CHAR* protocol) {
  * \return: I2C status from the write call
  */
 Drv::I2cStatus PA1010D::sendCommand(Fw::Buffer buf) {
-    U8 cmd[buf.getSize() + 1 + 3 + 2];
+    U8 reg_data[buf.getSize() + 1 + 3 + 2];
+    Fw::Buffer cmdBuffer(reg_data, buf.getSize() + 1 + 3 + 2);
 
-    cmd[0] = '$';
-    memcpy(&cmd[1], buf.getData(), buf.getSize());
+    cmdBuffer.getData()[0] = '$';
+    memcpy(&cmdBuffer.getData()[1], buf.getData(), buf.getSize());
 
-    cmd[sizeof cmd - 5] = '*';
+    cmdBuffer.getData()[cmdBuffer.getSize() - 5] = '*';
 
     U8 checksum = 0;
     for (U8 i = 0; i < buf.getSize(); i++) {
@@ -360,14 +452,17 @@ Drv::I2cStatus PA1010D::sendCommand(Fw::Buffer buf) {
     }
 
     CHAR hexDigits[] = "0123456789ABCDEF";
-    cmd[sizeof cmd - 4] = static_cast<U8>(hexDigits[(checksum >> 4) & 0x0F]);
-    cmd[sizeof cmd - 3] = static_cast<U8>(hexDigits[checksum & 0x0F]);
+    cmdBuffer.getData()[cmdBuffer.getSize() - 4] = static_cast<U8>(hexDigits[(checksum >> 4) & 0x0F]);
+    cmdBuffer.getData()[cmdBuffer.getSize() - 3] = static_cast<U8>(hexDigits[checksum & 0x0F]);
 
-    cmd[sizeof cmd - 2] = '\r';
-    cmd[sizeof cmd - 1] = '\n';
+    cmdBuffer.getData()[cmdBuffer.getSize() - 2] = '\r';
+    cmdBuffer.getData()[cmdBuffer.getSize() - 1] = '\n';
 
-    Fw::Buffer cmd_buf(cmd, sizeof cmd);
-    return this->i2cWrite_out(0, this->m_i2cDevAddress, cmd_buf);
+    Drv::I2cStatus stat = this->i2cWrite_out(0, this->m_i2cDevAddress, cmdBuffer);
+    if (stat != Drv::I2cStatus::I2C_OK) {
+        this->log_WARNING_HI_I2cError(stat);
+    }
+    return stat;
 }
 
-}  // namespace Sensors
+}  // namespace Adafruit

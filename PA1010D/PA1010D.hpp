@@ -14,6 +14,31 @@
 namespace Sensors {
 
 class PA1010D : public PA1010DComponentBase {
+
+  struct RMCPacket {
+    F32 utcTime;
+    CHAR status;
+    F32 latitude;
+    CHAR lat_NS;
+    F32 longitude;
+    CHAR lng_EW;
+    F32 speed;
+    F32 course;
+    U32 date;
+  };
+
+  struct GGAPacket {
+    F32 utcTime;
+    F32 latitude;
+    CHAR lat_NS;
+    F32 longitude;
+    CHAR lng_EW;
+    U32 fix;
+    U32 satsUsed;
+    F32 hdop;
+    F32 msl_altitude;
+  };
+
   public:
     /**
      * \brief Construct PA1010D object
@@ -46,8 +71,8 @@ class PA1010D : public PA1010DComponentBase {
     // ----------------------------------------------------------------------
 
     //! Handler implementation for run
-    void run_handler(NATIVE_INT_TYPE portNum,  //!< The port number
-                     NATIVE_UINT_TYPE context  //!< The call order
+    void run_handler(FwIndexType portNum,  //!< The port number
+                     U32 context  //!< The call order
     );
 
     // ----------------------------------------------------------------------
@@ -60,6 +85,16 @@ class PA1010D : public PA1010DComponentBase {
                                     Sensors::GPS_NMEA_OUTPUTS nmea,
                                     Fw::On state);
 
+    //! Handler implementation for command ENABLE_CONSTELLATIONS
+    //!
+    //! Command to enable/disable constellation use
+    void ENABLE_CONSTELLATIONS_cmdHandler(FwOpcodeType opCode,  //!< The opcode
+                                          U32 cmdSeq,           //!< The command sequence number
+                                          bool GPS,
+                                          bool GLONASS,
+                                          bool GALILEO,
+                                          bool BEIDOU);
+
     //! Handler implementation for command SET_UPDATE_RATE_MS
     void SET_UPDATE_RATE_MS_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                        U32 cmdSeq,           //!< The command sequence number
@@ -68,19 +103,6 @@ class PA1010D : public PA1010DComponentBase {
     // ----------------------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------------------
-
-    /**
-     * \brief Get the indices of the delimiters (',') for the protocol frame
-     *
-     * The function searches for a match of the protocol and stores all indices of ','
-     * within a vector until the next protocol is read (indicated by '$'), or when the
-     * end of the buffer is reached (can also be indicated by a sequence of "\n\n").
-     *
-     * \param buf: buffer contaning the entire byte stream read from the GPS
-     * \param protocol: the protocol string to look for
-     * \return: a vector containing the indices of all the delimiters for that protocol
-     */
-    std::vector<U8> get_delimiters(Fw::Buffer buf, const CHAR* protocol);
 
     /**
      * \brief Parses the NMEA frame for the specified protocol
@@ -105,10 +127,11 @@ class PA1010D : public PA1010DComponentBase {
      */
     Drv::I2cStatus sendCommand(Fw::Buffer cmd);
 
-
     // ----------------------------------------------------------------------
     // Member variables
     // ----------------------------------------------------------------------
+
+    bool m_configured = false;
 
     U32 m_i2cDevAddress;
 
@@ -118,12 +141,15 @@ class PA1010D : public PA1010DComponentBase {
 
     GPS_DataUnit gps_utc_date;
     GPS_DataUnit gps_utc_time;
-    GPS_DataUnit gps_latitude;
+    GPS_DataUnit_F64 gps_latitude;
     Fw::String gps_latitude_NS;
-    GPS_DataUnit gps_longitude;
+    GPS_DataUnit_F64 gps_longitude;
     Fw::String gps_longitude_EW;
     GPS_DataUnit_F64 gps_speed;
     GPS_DataUnit_F64 gps_altitude;
+    I32 gps_sats_used;
+    GPS_Constellations_NumSatellites gps_sats_used_constellations;
+    F64 gps_hdop;
 };
 
 }  // namespace Sensors
